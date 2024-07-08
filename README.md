@@ -58,7 +58,7 @@ Once the dialogue is open, basic usage involves:
 
 * Navigate results with the up and down arrow keys, open the selected result with `Enter`. If you hold `Shift`, you'll open the parent folder of the selected item. If you hold `Ctrl`, the search dialogue will stay open, otherwise it will close.
 
-For more information on usage (there's several more keybindings, and a small command interface for extra function), see the built-in help page in PowerShell. If available, you can access it with `Get-Help Search-Folder`. 
+For more information on usage (there's several more keybindings, and a small command interface for extra function), see the built-in help page in PowerShell. If available, you can access it with the PowerShell command `Get-Help Search-Folder`. 
 
 ## Advanced setup
 
