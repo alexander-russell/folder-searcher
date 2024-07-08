@@ -157,6 +157,14 @@ function Search-Folder {
         $Index.Loaded = $true
     }
 
+    #If index is out of date, asyncrhonously create a new one
+    if ([System.IO.File]::Exists("$DataPath\IndexLastCrawlDate.txt")) {
+        $LastCrawlDate = Get-Content "$DataPath\IndexLastCrawlDate.txt"
+    }
+    if ($LastCrawlDate -ne [DateTime]::Now.ToString("yyyy-MM-dd")) {
+        New-SearchIndex -Path $Path
+    }
+
     #If no query provided, start in insert mode
     if (!$PSBoundParameters.ContainsKey("QueryContent")) {
         Write-Log "Setup: NoQuery: StartInInsertMode" -Path $LogPath
@@ -539,7 +547,7 @@ function Search-Folder {
                 "RebuildIndex" { 
                     #Order a new index and signal it is being rebuilt
                     Write-Log "HandleCommand: CommandReady: RebuildIndex" -Path $LogPath
-                    New-SearchIndex
+                    New-SearchIndex -Path $Path
                     $RebuildInProgress = $true
                 }
                 "ToggleIncognito" {
