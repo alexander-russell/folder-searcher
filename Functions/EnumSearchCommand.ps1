@@ -1,0 +1,4 @@
+enum SearchCommand {
+    RebuildIndex
+    ToggleIncognito
+}
