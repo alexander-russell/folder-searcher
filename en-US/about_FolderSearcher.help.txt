@@ -1,8 +1,5 @@
 SHORT DESCRIPTION
     FolderSearcher is a module that encapsulates the Search-Folder function. 
-    It handles creating an index of files in a configured path, and stores the 
-    Index, SearchHistory and LookupCount, as well as a log file. To get help
-    using the Search-Folder function, run `Get-Help Search-Folder -Full`
 
 LONG DESCRIPTION
     The module handles creating an index of files in a configured path, and stores the 
