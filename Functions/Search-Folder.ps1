@@ -1,7 +1,71 @@
+<#
+.SYNOPSIS
+Search through Path using a query string
+
+.DESCRIPTION
+An interactive dialogue that presents all the items contained in the index for a chosen directory that match the inputted Query. For detail on interactive usage, run Get-Help Search-Folder -Full.
+
+.PARAMETER QueryContent
+Optional parameter to initialise the program with a query. It can be edited during runtime
+
+.PARAMETER Path
+The folder to 
+
+.EXAMPLE
+Search-Folder
+Search-Folder "my query"
+#See Notes for description of interactive usage
+
+.NOTES
+General:
+- The program is primarily interactive, usage is mostly not on the command line.
+- To select the directory to use, modify the Path property of the Config.json file in the Data subfolder of the module root directory.
+
+Modes:
+- During operation, the program operates in 4 modes, each with designated keybindings and purposes:
+  1. Insert: Modify search query and use search history.
+  2. Select: Navigate results and configure search settings.
+  3. Command: Enter specific commands, notably the RebuildIndex command among others.
+  4. Sleep: Reduces response rate to ~1 second. Enabled after inactivity, reverts to Select mode on any keypress.
+
+Insert Mode:
+- As noted below, this is entered by typing 'I' while in Select Mode.
+- Left/Right Arrow: Move cursor across query. Hold Ctrl to move by word.
+- Up/Down Arrow: Use recent queries from Search History (a search is only added if used to open a resource).
+- Backspace: Delete a character from query at position of cursor. Hold Ctrl to delete a word.
+- Enter/Esc: Exit Insert Mode to Select Mode.
+- Any character in $Query.AllowedCharacters: Add character to query at position of cursor.
+
+Select Mode:
+- 'I': Enter Insert Mode
+- ':': Enter Command Mode
+- 'Q': Quit the program
+- Enter: Open the selected item. Hold Shift to open the selected item's parent. Hold Ctrl to keep search dialogue open. Hold both to do both!
+- C: Copy the path to the selected item. Hold Shift to copy the path to the selected item's parent.
+- Up/Down: Navigate through listed search results. If more results available, the list will scroll as you reach the bound.
+- F: (FullName) Toggle display of the relative path (to main Path) to each listed result.
+- P: (Parent) Toggle display of just the parent folder for each listed result. This is displayed automatically in the case of name clashes.
+- A: (All) Toggle uncapped results length. Normally, the results job stops when it has 50, this setting ensures it finds every resource matching the query.
+- D: (Directory) Toggle filtering results to only include folders.
+- R: (Regex) Toggle using regex to match query. Default is a simple .contains($Query) check.
+
+Command Mode:
+- As noted above, this is opened by typing ':' while in Select Mode.
+- Enter: Run the inputted command
+- Backspace: Remove a character from the end of the inputted command
+- Tab/Right Arrow: Use autocomplete command suggestion (It will be used when command is run regardless, but this allows you to shortcut to adding arguments)
+- Any character in $Query.AllowedCharacters: Add character to command at position of cursor. (Ibid, I reused the list from $Query)
+
+Using Commands:
+- The syntax of any command is <CommandName> [<ArgName>=<ArgVal> ]*, where CommandName is PascalCase with no spaces, and commands take any number of arguments including 0.
+
+Available Commands:
+- RebuildIndex: Manually requests a new search crawl. Note that this will otherwise be triggered on the first use of Search-Folder each day.
+- ToggleIncognito: Toggles whether to register search history. If incognito is on, it will display in status and searches will not be saved.
+#>
 function Search-Folder {
     param (
-        [string]$QueryContent = "",
-        $Path = "C:\Users\alexa\Desktop"
+        [string]$QueryContent = ""
     )
 
     #########################################################################################################################################
@@ -257,15 +321,6 @@ function Search-Folder {
                     $Mode = "Select"
                     $Display.RedrawTitle = $true
                 }
-                #If character is an allowed key, add this character to query
-                elseif ($KeyPress.KeyChar -match $Query.AllowedCharacters) {
-                    $Query.Content = $Query.Content.Insert($Query.Cursor, $KeyPress.KeyChar)
-                    $Query.Cursor += 1
-
-                    #Signal redraw of title and request new data
-                    $Display.RedrawTitle = $true
-                    $Results.RefreshData = $true
-                }
                 #Navigate search history
                 elseif ($KeyPress.Key -in @("UpArrow", "DownArrow")) {
                     #Save current query, if not already using searchhistory
@@ -338,6 +393,15 @@ function Search-Folder {
 
                     #Signal title redraw
                     $Display.RedrawTitle = $true
+                }
+                #If character is an allowed key, add this character to query
+                elseif ($KeyPress.KeyChar -match $Query.AllowedCharacters) {
+                    $Query.Content = $Query.Content.Insert($Query.Cursor, $KeyPress.KeyChar)
+                    $Query.Cursor += 1
+                
+                    #Signal redraw of title and request new data
+                    $Display.RedrawTitle = $true
+                    $Results.RefreshData = $true
                 }
             }
             elseif ($Mode -eq "Command") {
@@ -450,7 +514,7 @@ function Search-Folder {
                     }
                 }
                 #Up down navigation
-                elseif ($KeyPress.Key -like "*Arrow") {
+                elseif ($KeyPress.Key -in @("UpArrow", "DownArrow")) {
                     #Increment/decrement cursor
                     switch ($KeyPress.Key) {
                         "UpArrow" { $Results.Cursor-- }
