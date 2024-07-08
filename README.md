@@ -82,12 +82,17 @@ To do so, follow these steps:
 2. Wherever you like within the file, add the following, replacing PATH_TO_THE_MODULE with the path to your FolderSearcher directory on your PSModulePath, as set up above:
 
 ```{PowerShell}
-$LastCrawlDate = Get-Content "PATH_TO_THE_MODULE\Data\IndexLastCrawlDate.txt"
-if ($LastCrawlDate -ne [DateTime]::Now.ToString("yyyy-MM-dd")) {
-    $Config = Get-Content  "PATH_TO_THE_MODULE\Data\Config.json" | ConvertFrom-Json
-    $FolderSearcherModule = Get-Module -Name FolderSearcher
-    if ($FolderSearcherModule) {
-        & $FolderSearcherModule { New-SearchIndex -Path $Config.Path }
+if ([System.IO.File]::Exists("PATH_TO_THE_MODULE\Data\IndexLastCrawlDate.txt") -and [System.IO.File]::Exists("PATH_TO_THE_MODULE\Data\Config.json")) {
+    $LastCrawlDate = Get-Content "PATH_TO_THE_MODULE\Data\IndexLastCrawlDate.txt"
+    if ($LastCrawlDate -ne [DateTime]::Now.ToString("yyyy-MM-dd")) {
+        $Config = Get-Content  "PATH_TO_THE_MODULE\Data\Config.json" | ConvertFrom-Json
+        if (!(Get-Module FolderSearcher)) {
+            Import-Module -Name ModulesSymlink\FolderSearcher
+        }
+        $FolderSearcherModule = Get-Module FolderSearcher
+        if ($FolderSearcherModule) {
+            & $FolderSearcherModule { New-SearchIndex -Path $Config.Path }
+        }
     }
 }
 ```
