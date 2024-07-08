@@ -50,7 +50,7 @@ Thats all you need to do to get it running. To use it, run `Search-Folder`. It s
 
 ## Usage
 
-Once installed and setup, to use the module you just need to run the command `Search-Folder` to open the search dialogue. You can optionally start it with an initial query like `Search-Folder -QueryContent "my search query"`, but this isn't necessary. If no initial query is provided, the program will open in *Insert Mode*, ready to get the query from keyboard input.
+Once installed and set up, to use the module you just need to run the command `Search-Folder` to open the search dialogue. You can optionally start it with an initial query like `Search-Folder -QueryContent "my search query"`, but this isn't necessary. If no initial query is provided, the program will open in *Insert Mode*, ready to get the query from keyboard input.
 
 Once the dialogue is open, basic usage involves:
 
