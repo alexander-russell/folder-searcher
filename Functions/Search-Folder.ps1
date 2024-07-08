@@ -15,6 +15,24 @@ function Search-Folder {
     $LookupCountPath = "$DataPath\LookupCount.csv"
     $IndexPath = "$DataPath\Index.csv"
 
+    #Read config file
+    if (![System.IO.File]::Exists("$DataPath\Config.json")) {
+        [PSCustomObject]@{
+            Path = "PATH_TO_YOUR_FOLDER"
+        } | ConvertTo-Json | Out-File "$DataPath\Config.json"
+    }
+    $Config = Get-Content "$DataPath\Config.json" | ConvertFrom-Json
+
+    #Determine search location
+    if (!$PSBoundParameters.Keys.Contains("Path")) {
+        if (!$Config.Path -or !(Test-Path $Config.Path)) {
+            Write-Error "You need to set a valid path. `nOpen '$DataPath\Config.json' and edit the 'Path' property. `nSet it to the path to the folder you want to use this module to search through. If your path includes backslashes, escape them (I.e. instead of '\' write '\\')"
+            return
+        }
+        $Path = $Config.Path
+    }
+    
+
     #Initialise keypress and mode
     $KeyPress = $null
     $Mode = "Select"    
