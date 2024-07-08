@@ -54,7 +54,7 @@ Once installed and set up, to use the module you just need to run the command `S
 
 Once the dialogue is open, basic usage involves:
 
-* Enter insert mode by pressing "I". A cursor should appear in the search box, you can now edit your query. Navigate with the arrow keys and exit *Insert Mode* with `Enter` or `Escape`. 
+* Enter *Insert Mode* by pressing "I". A cursor should appear in the search box, you can now edit your query. Navigate with the arrow keys and exit *Insert Mode* with `Enter` or `Escape`. 
 
 * Navigate results with the array keys, open the selected result with `Enter`. If you hold `Shift`, you'll open the parent folder of the selected item. If you hold `Ctrl`, the search dialogue will stay open, otherwise it will close.
 
