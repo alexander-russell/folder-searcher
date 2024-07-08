@@ -86,7 +86,9 @@ $LastCrawlDate = Get-Content "PATH_TO_THE_MODULE\Data\IndexLastCrawlDate.txt"
 if ($LastCrawlDate -ne [DateTime]::Now.ToString("yyyy-MM-dd")) {
     $Config = Get-Content  "PATH_TO_THE_MODULE\Data\Config.json" | ConvertFrom-Json
     $FolderSearcherModule = Get-Module -Name FolderSearcher
-    & $FolderSearcherModule { New-SearchIndex -Path $Config.Path }
+    if ($FolderSearcherModule) {
+        & $FolderSearcherModule { New-SearchIndex -Path $Config.Path }
+    }
 }
 ```
 
