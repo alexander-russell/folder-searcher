@@ -54,9 +54,9 @@ Once installed and set up, to use the module you just need to run the command `S
 
 Once the dialogue is open, basic usage involves:
 
-* Enter *Insert Mode* by pressing "I". A cursor should appear in the search box, you can now edit your query. Navigate with the arrow keys and exit *Insert Mode* with `Enter` or `Escape`. 
+* Enter *Insert Mode* by pressing "I". A cursor should appear in the search box, you can now edit your query. Navigate with the left and right arrow keys and exit *Insert Mode* with `Enter` or `Escape`. You can access recent searches (only searches that ended in opening an item) with the up and down arrow keys.
 
-* Navigate results with the array keys, open the selected result with `Enter`. If you hold `Shift`, you'll open the parent folder of the selected item. If you hold `Ctrl`, the search dialogue will stay open, otherwise it will close.
+* Navigate results with the up and down arrow keys, open the selected result with `Enter`. If you hold `Shift`, you'll open the parent folder of the selected item. If you hold `Ctrl`, the search dialogue will stay open, otherwise it will close.
 
 For more information on usage (there's several more keybindings, and a small command interface for extra function), see the built-in help page in PowerShell. If available, you can access it with `Get-Help Search-Folder`. 
 
