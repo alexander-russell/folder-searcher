@@ -32,8 +32,9 @@ As mentioned above, this is a PowerShell module. It can therefore by installed i
 
 2. The above command will give you a list of folders, separated by a semicolon. Clone this repository into any of these directories. For example, I use `C:\Users\<user>\Documents\PowerShell\Modules`.
 
-3. Continue to setup below
+3. Rename the cloned folder from `folder-searcher` to `FolderSearcher`.
 
+3. Continue to setup below
 
 ## Setup
 
@@ -49,7 +50,7 @@ Thats all you need to do to get it running. To use it, run `Search-Folder`. It s
 
 ## Advanced setup
 
-To make daily use of this module for seamless for myself, I've configured a couple of extra things:
+To make frequent use of this module more convenient for myself, I've configured a couple of extra things.
 
 ### Shortcut
 
@@ -78,3 +79,7 @@ if ($LastCrawlDate -ne [DateTime]::Now.ToString("yyyy-MM-dd")) {
 ```
 
 **Note:** The above code works by sneakily accessing an unexported function from this module. I have chosen not to export it to avoid duplicating some of the Config file setup code in both places and because the function shouldn't be used directly outside of this usecase. The index can be rebuilt from the `Search-Folder` function via the `:RebuildIndex` command.
+
+## Contact
+
+This project is maintained by Alexander Russell. If you have any problems with the above, please either send me an email or create an issue in this repository - your preference.
