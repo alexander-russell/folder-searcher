@@ -46,7 +46,19 @@ With that path in mind:
 2. Go to the .json file specified in the error message
 3. Change the value of Path from `"PATH_TO_YOUR_FOLDER"` to your chosen folder path. Like the error code says, make sure you escape backslashes, as .json will try to interpret them. For example, my path is `C:\Users\<user>\Desktop`, so in my Config.json file I write `"C:\\Users\\<user>\\Desktop"` as the value for the `Path` property.
 
-Thats all you need to do to get it running. To use it, run `Search-Folder`. It should start building the index. When the "REBUILDING" status disappears, it's ready to use and results should start to appear. 
+Thats all you need to do to get it running. To use it, run `Search-Folder`. It should start building the index. When the "REBUILDING" status disappears, it's ready to use and results should start to appear. There's some more configuration you could do in Advanced Setup below.
+
+## Usage
+
+Once installed and setup, to use the module you just need to run the command `Search-Folder` to open the search dialogue. You can optionally start it with an initial query like `Search-Folder -QueryContent "my search query"`, but this isn't necessary. If no initial query is provided, the program will open in *Insert Mode*, ready to get the query from keyboard input.
+
+Once the dialogue is open, basic usage involves:
+
+* Enter insert mode by pressing "I". A cursor should appear in the search box, you can now edit your query. Navigate with the arrow keys and exit *Insert Mode* with `Enter` or `Escape`. 
+
+* Navigate results with the array keys, open the selected result with `Enter`. If you hold `Shift`, you'll open the parent folder of the selected item. If you hold `Ctrl`, the search dialogue will stay open, otherwise it will close.
+
+For more information on usage (there's several more keybindings, and a small command interface for extra function), see the built-in help page in PowerShell. If available, you can access it with `Get-Help Search-Folder`. 
 
 ## Advanced setup
 
