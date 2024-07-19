@@ -505,7 +505,7 @@ function Search-Folder {
                         param (
                             $FullName
                         )
-                        Invoke-Item $FullName
+                        Invoke-Item -LiteralPath $FullName
                     }
                     
                     #Unless Ctrl key held, close search dialogue entirely
