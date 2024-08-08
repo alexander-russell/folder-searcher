@@ -119,7 +119,9 @@ function Search-Folder {
         StashedQuery = ""
         Incognito    = $false
     }
-    $SearchHistory.Cursor = $SearchHistory.Data.Count
+    #Reverse records and initialise cursor (0 means most recent search)
+    [array]::Reverse($SearchHistory.Data)
+    $SearchHistory.Cursor = -1 #$SearchHistory.Data.Count
     
     #Load lookup count
     if (![System.IO.File]::Exists($LookupCountPath)) {
@@ -145,18 +147,19 @@ function Search-Folder {
 
     #Initialise timekeeping variable
     $Timekeeping = [pscustomobject]@{
-        TimeToSleep        = 60 #Seconds
-        TimeToShutdown     = 600 #Seconds
-        SleepLength        = 1 #Seconds
-        FrameInterval      = 20 #Milliseconds
-        FrameCount         = 0
-        Start              = [datetime]::Now
-        End                = $null
-        Duration           = $null
-        LastRun            = [datetime]::Now.AddMilliseconds(-$FrameInteral)
-        LastKeyPress       = [datetime]::Now
-        LastCopyPath       = $null
-        LastCopyParentPath = $null
+        TimeToSleep         = 60 #Seconds
+        TimeToShutdown      = 600 #Seconds
+        SleepLength         = 1 #Seconds
+        FrameInterval       = 20 #Milliseconds
+        FrameCount          = 0
+        Start               = [datetime]::Now
+        End                 = $null
+        Duration            = $null
+        LastRun             = [datetime]::Now.AddMilliseconds(-$FrameInteral)
+        LastKeyPress        = [datetime]::Now
+        LastCopyPath        = $null
+        LastCopyParentPath  = $null
+        LastOpenInvalidItem = $null
     }
 
     #Initialise variable to store information about display configuration and what needs updating
@@ -324,32 +327,37 @@ function Search-Folder {
                 #Navigate search history
                 elseif ($KeyPress.Key -in @("UpArrow", "DownArrow")) {
                     #Save current query, if not already using searchhistory
-                    if ($SearchHistory.Cursor -eq $SearchHistory.Data.Count) {
+                    if ($SearchHistory.Cursor -eq -1) {
+                        #$SearchHistory.Data.Count) {
                         $SearchHistory.StashedQuery = $Query.Content
                     }
 
                     #Increment/decrement index
                     if ($KeyPress.Key -eq "UpArrow") {
                         #If index not initialised, start it at the end
-                        if ($SearchHistory.Cursor -eq $SearchHistory.Data.Count) {
-                            $SearchHistory.Cursor = $SearchHistory.Data.Count - 1
+                        if ($SearchHistory.Cursor -eq -1 ) {
+                            #$SearchHistory.Data.Count) {
+                            $SearchHistory.Cursor = 0 #$SearchHistory.Data.Count - 1
                         }
                         else {
-                            $SearchHistory.Cursor--
+                            $SearchHistory.Cursor++ #--
                         }
                     }
                     elseif ($KeyPress.Key -eq "DownArrow") {
                         #If index not initialised, do nothing. Must initialise with UpArrow
-                        if ($SearchHistory.Cursor -ne $SearchHistory.Data.Count) {
-                            $SearchHistory.Cursor++
+                        if ($SearchHistory.Cursor -ne -1) {
+                            #$SearchHistory.Data.Count) {
+                            $SearchHistory.Cursor-- #++
                         }
                     }
                     
                     #Bounds check index
-                    $SearchHistory.Cursor = [Math]::Min([Math]::Max($SearchHistory.Cursor, 0), $SearchHistory.Data.Count)
+                    # $SearchHistory.Cursor = [Math]::Min([Math]::Max($SearchHistory.Cursor, 0), $SearchHistory.Data.Count)
+                    $SearchHistory.Cursor = [Math]::Min([Math]::Max($SearchHistory.Cursor, -1), $SearchHistory.Data.Count - 1)
 
                     #If exiting SearchHistory, use stashed query from before entering SearchHistory
-                    if ($SearchHistory.Cursor -eq $SearchHistory.Data.Count) {
+                    if ($SearchHistory.Cursor -eq -1) {
+                        #$SearchHistory.Data.Count) {
                         $Query.Content = $SearchHistory.StashedQuery
                     }
                     #Otherwise Use SearchHistory item as query
@@ -500,17 +508,25 @@ function Search-Folder {
                         $FullName = $Results.Data[$Results.Cursor].FullName
                     }
 
-                    #Open the chosen file (use job so weird apps like vscode that print verbose output to the console they're invoked from don't create clutter)
-                    $InvokeJob = Start-Job -ArgumentList @($FullName) -ScriptBlock {
-                        param (
-                            $FullName
-                        )
-                        Invoke-Item -LiteralPath $FullName
-                    }
+                    #Check path is valid
+                    if (Test-Path -LiteralPath $FullName) {
+                        #Open the chosen file (use job so weird apps like vscode that print verbose output to the console they're invoked from don't create clutter)
+                        $InvokeJob = Start-Job -ArgumentList @($FullName) -ScriptBlock {
+                            param (
+                                $FullName
+                            )
+                            Invoke-Item -LiteralPath $FullName
+                        }
                     
-                    #Unless Ctrl key held, close search dialogue entirely
-                    if (($KeyPress.Modifiers -band [ConsoleModifiers]::Control) -eq 0) {
-                        $Mode = "Exit"
+                        #Unless Ctrl key held, close search dialogue entirely
+                        if (($KeyPress.Modifiers -band [ConsoleModifiers]::Control) -eq 0) {
+                            $Mode = "Exit"
+                        }
+                    }
+                    else {
+                        #If opening an invalid path, update timekeeping to display message in status bar
+                        $Timekeeping.LastOpenInvalidItem = [datetime]::Now
+                        $Display.RedrawStatus = $true
                     }
                 }
                 #Up down navigation
@@ -635,10 +651,13 @@ function Search-Folder {
         if ($SearchHistory.Data) {
             $IndexOfQuery = $SearchHistory.Data.Query.IndexOf($Query.Content)
             if ($Results.RefreshData -and $Query.Content -ne "" -and $IndexOfQuery -ne -1) {
-                #Use directly from search history
-                Write-Log "RefreshData: CacheResult: Found: Name=$($SearchHistory.Data[$IndexOfQuery].Name)" -Path $LogPath
-                $Results.Data = $SearchHistory.Data[$IndexOfQuery]
-                $Display.RedrawList = $true
+                #Check search history item still exists
+                if (Test-Path -LiteralPath $SearchHistory.Data[$IndexOfQuery]) {
+                    #Use directly from search history
+                    Write-Log "RefreshData: CacheResult: Found: Name=$($SearchHistory.Data[$IndexOfQuery].Name)" -Path $LogPath
+                    $Results.Data = $SearchHistory.Data[$IndexOfQuery]
+                    $Display.RedrawList = $true
+                }
             }
         }
 
@@ -753,6 +772,11 @@ function Search-Folder {
     
                     #Calculate FinalScore based on RelevanceScore, search history, and the specific query
                     $ResultsUnsorted[$i].FinalScore = $QueryMatchScore + $SearchHistoryScore * 4 + $ResultsUnsorted[$i].RelevanceScore
+                }
+
+                #Check paths still valid (Only if !UseAll, otherwise too time consuming)
+                if (!$Results.UseAll) {
+                    $ResultsUnsorted = $ResultsUnsorted | Where-Object { Test-Path -LiteralPath $_.FullName }
                 }
 
                 #Sort results by score and signal that they're loaded and need to be used
@@ -927,6 +951,7 @@ function Search-Folder {
             if ($Results.Job.State -ne "Completed") { $StatusDetails += "`e[5mRUNNING`e[0m " }
             if ($Timekeeping.LastCopyPath -gt [datetime]::Now.AddSeconds(-2)) { $StatusDetails += "`e[38;2;0;255;0mCOPIED`e[0m " }
             if ($Timekeeping.LastCopyParentPath -gt [datetime]::Now.AddSeconds(-2)) { $StatusDetails += "`e[38;2;0;255;0mPARENTCOPIED`e[0m " }
+            if ($Timekeeping.LastOpenInvalidItem -gt [datetime]::Now.AddSeconds(-2)) { $StatusDetails += "`e[38;2;255;0;0mINVALIDPATH`e[0m " }
             if ($SearchHistory.Incognito) { $StatusDetails += "INCOGNITO " }
 
             if ($StatusDetails -ne "") {
