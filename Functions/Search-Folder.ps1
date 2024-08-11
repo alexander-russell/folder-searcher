@@ -160,6 +160,7 @@ function Search-Folder {
         LastCopyPath        = $null
         LastCopyParentPath  = $null
         LastOpenInvalidItem = $null
+        LastOpenNullItem    = $null
     }
 
     #Initialise variable to store information about display configuration and what needs updating
@@ -479,55 +480,66 @@ function Search-Folder {
                 }
                 #Open selection (or selection's parent)
                 elseif ($KeyPress.Key -eq "Enter") {
-                    #Save query and selection to search history
-                    if (!$SearchHistory.Incognito) {
-                        [PSCustomObject]@{
-                            DateTime = [datetime]::Now
-                            Query    = $Query.Content
-                            FullName = $Results.Data[$Results.Cursor].FullName
-                            Name     = $Results.Data[$Results.Cursor].Name
-                        } | Export-Csv $SearchHistoryPath -Append
-                    }
+                    #Check results have loaded
+                    if ($Results.Data -and $Results.Data[$Results.Cursor]) {
 
-                    #Increment file lookup count
-                    $LookupCount.Cursor = $LookupCount.Data.FullName.IndexOf($Results.Data[$Results.Cursor].FullName)
-                    if ($LookupCount.Cursor -ne -1) {
-                        #Increment, verbosely to convert from string
-                        $LookupCount.Data[$LookupCount.Cursor].Count = 1 + $LookupCount.Data[$LookupCount.Cursor].Count
-                    }
-                    else {
-                        $LookupCount.Data += [pscustomobject]@{FullName = $Results.Data[$Results.Cursor].FullName; Count = 1 }
-                    }
-                    $LookupCount.Data | Export-Csv $LookupCountPath
-
-                    #If shift key, open parent instead
-                    if ($KeyPress.Modifiers -band [ConsoleModifiers]::Shift) {
-                        $FullName = Split-Path $Results.Data[$Results.Cursor].FullName -Parent
-                    }
-                    else {
-                        $FullName = $Results.Data[$Results.Cursor].FullName
-                    }
-
-                    #Check path is valid
-                    if (Test-Path -LiteralPath $FullName) {
-                        #Open the chosen file (use job so weird apps like vscode that print verbose output to the console they're invoked from don't create clutter)
-                        $InvokeJob = Start-Job -ArgumentList @($FullName) -ScriptBlock {
-                            param (
-                                $FullName
-                            )
-                            Invoke-Item -LiteralPath $FullName
+                        #Save query and selection to search history
+                        if (!$SearchHistory.Incognito) {
+                            [PSCustomObject]@{
+                                DateTime = [datetime]::Now
+                                Query    = $Query.Content
+                                FullName = $Results.Data[$Results.Cursor].FullName
+                                Name     = $Results.Data[$Results.Cursor].Name
+                            } | Export-Csv $SearchHistoryPath -Append
                         }
+
+                        #Increment file lookup count
+                        $LookupCount.Cursor = $LookupCount.Data.FullName.IndexOf($Results.Data[$Results.Cursor].FullName)
+                        if ($LookupCount.Cursor -ne -1) {
+                            #Increment, verbosely to convert from string
+                            $LookupCount.Data[$LookupCount.Cursor].Count = 1 + $LookupCount.Data[$LookupCount.Cursor].Count
+                        }
+                        else {
+                            $LookupCount.Data += [pscustomobject]@{FullName = $Results.Data[$Results.Cursor].FullName; Count = 1 }
+                        }
+                        $LookupCount.Data | Export-Csv $LookupCountPath
+
+                        #If shift key, open parent instead
+                        if ($KeyPress.Modifiers -band [ConsoleModifiers]::Shift) {
+                            $FullName = Split-Path $Results.Data[$Results.Cursor].FullName -Parent
+                        }
+                        else {
+                            $FullName = $Results.Data[$Results.Cursor].FullName
+                        }
+
+                        #Check path is valid
+                        if (Test-Path -LiteralPath $FullName) {
+                            #Open the chosen file (use job so weird apps like vscode that print verbose output to the console they're invoked from don't create clutter)
+                            $InvokeJob = Start-Job -ArgumentList @($FullName) -ScriptBlock {
+                                param (
+                                    $FullName
+                                )
+                                Invoke-Item -LiteralPath $FullName
+                            }
                     
-                        #Unless Ctrl key held, close search dialogue entirely
-                        if (($KeyPress.Modifiers -band [ConsoleModifiers]::Control) -eq 0) {
-                            $Mode = "Exit"
+                            #Unless Ctrl key held, close search dialogue entirely
+                            if (($KeyPress.Modifiers -band [ConsoleModifiers]::Control) -eq 0) {
+                                $Mode = "Exit"
+                            }
+                        }
+                        else {
+                            #If opening an invalid path, update timekeeping to display message in status bar
+                            $Timekeeping.LastOpenInvalidItem = [datetime]::Now
+                            $Display.RedrawStatus = $true
                         }
                     }
+                    #If Enter pressed before results load, display status and carry on
                     else {
-                        #If opening an invalid path, update timekeeping to display message in status bar
-                        $Timekeeping.LastOpenInvalidItem = [datetime]::Now
+                        #Update timekeeping to display status
+                        $Timekeeping.LastOpenNullItem = [datetime]::Now
                         $Display.RedrawStatus = $true
                     }
+
                 }
                 #Up down navigation
                 elseif ($KeyPress.Key -in @("UpArrow", "DownArrow")) {
@@ -652,11 +664,15 @@ function Search-Folder {
             $IndexOfQuery = $SearchHistory.Data.Query.IndexOf($Query.Content)
             if ($Results.RefreshData -and $Query.Content -ne "" -and $IndexOfQuery -ne -1) {
                 #Check search history item still exists
-                if (Test-Path -LiteralPath $SearchHistory.Data[$IndexOfQuery]) {
+                if (Test-Path -LiteralPath $SearchHistory.Data[$IndexOfQuery].FullName) {
                     #Use directly from search history
                     Write-Log "RefreshData: CacheResult: Found: Name=$($SearchHistory.Data[$IndexOfQuery].Name)" -Path $LogPath
                     $Results.Data = $SearchHistory.Data[$IndexOfQuery]
                     $Display.RedrawList = $true
+                }
+                else {
+                    Write-Log "RefreshData: CacheResult: Found: FailedTestPath: Name=$($SearchHistory.Data[$IndexOfQuery].Name)" -Path $LogPath
+
                 }
             }
         }
@@ -952,6 +968,7 @@ function Search-Folder {
             if ($Timekeeping.LastCopyPath -gt [datetime]::Now.AddSeconds(-2)) { $StatusDetails += "`e[38;2;0;255;0mCOPIED`e[0m " }
             if ($Timekeeping.LastCopyParentPath -gt [datetime]::Now.AddSeconds(-2)) { $StatusDetails += "`e[38;2;0;255;0mPARENTCOPIED`e[0m " }
             if ($Timekeeping.LastOpenInvalidItem -gt [datetime]::Now.AddSeconds(-2)) { $StatusDetails += "`e[38;2;255;0;0mINVALIDPATH`e[0m " }
+            if ($Timekeeping.LastOpenNullItem -gt [datetime]::Now.AddSeconds(-1) -and !$Results.Data) { $StatusDetails += "`e[38;2;255;0;0mNORESULT`e[0m " }
             if ($SearchHistory.Incognito) { $StatusDetails += "INCOGNITO " }
 
             if ($StatusDetails -ne "") {
