@@ -505,21 +505,28 @@ function Search-Folder {
                         $LookupCount.Data | Export-Csv $LookupCountPath
 
                         #If shift key, open parent instead
-                        if ($KeyPress.Modifiers -band [ConsoleModifiers]::Shift) {
-                            $FullName = Split-Path $Results.Data[$Results.Cursor].FullName -Parent
-                        }
-                        else {
-                            $FullName = $Results.Data[$Results.Cursor].FullName
-                        }
+                        $OpenParent = $KeyPress.Modifiers -band [ConsoleModifiers]::Shift
 
                         #Check path is valid
+                        $FullName = $Results.Data[$Results.Cursor].FullName
                         if (Test-Path -LiteralPath $FullName) {
                             #Open the chosen file (use job so weird apps like vscode that print verbose output to the console they're invoked from don't create clutter)
-                            $InvokeJob = Start-Job -ArgumentList @($FullName) -ScriptBlock {
+                            $InvokeJob = Start-Job -ArgumentList @($FullName, $OpenParent) -ScriptBlock {
                                 param (
-                                    $FullName
+                                    $FullName,
+                                    $OpenParent
                                 )
-                                Invoke-Item -LiteralPath $FullName
+                                if ($OpenParent) {
+                                    if ($IsWindows) {
+                                        #For windows only, explicitly invoke File Explorer with this file in focus
+                                        explorer.exe /select,$FullName
+                                    } else {
+                                        $ParentPath = Split-Path $FullName -Parent
+                                        Invoke-Item -LiteralPath $ParentPath
+                                    }
+                                } else {
+                                    Invoke-Item -LiteralPath $FullName
+                                }
                             }
                     
                             #Unless Ctrl key held, close search dialogue entirely
