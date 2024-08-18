@@ -521,10 +521,12 @@ function Search-Folder {
                                         #For windows only, explicitly invoke File Explorer with this file in focus
                                         explorer.exe /select,$FullName
                                     } else {
+                                        #Otherwise just invoke parent path with default program
                                         $ParentPath = Split-Path $FullName -Parent
                                         Invoke-Item -LiteralPath $ParentPath
                                     }
                                 } else {
+                                    #Invoke item with default program
                                     Invoke-Item -LiteralPath $FullName
                                 }
                             }
