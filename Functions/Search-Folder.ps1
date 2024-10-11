@@ -225,7 +225,7 @@ function Search-Folder {
         $Index.Loaded = $true
     }
 
-    #If index is out of date, asyncrhonously create a new one
+    #If index is out of date, asynchronously create a new one
     if ([System.IO.File]::Exists("$DataPath\IndexLastCrawlDate.txt")) {
         $LastCrawlDate = Get-Content "$DataPath\IndexLastCrawlDate.txt"
     }
