@@ -1,4 +1,5 @@
 enum SearchCommand {
     RebuildIndex
-    ToggleIncognito
+    Incognito
+    ShowScore
 }

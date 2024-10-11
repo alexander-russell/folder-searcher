@@ -61,7 +61,7 @@ Using Commands:
 
 Available Commands:
 - RebuildIndex: Manually requests a new search crawl. Note that this will otherwise be triggered on the first use of Search-Folder each day.
-- ToggleIncognito: Toggles whether to register search history. If incognito is on, it will display in status and searches will not be saved.
+- Incognito: Toggles whether to register search history. If incognito is on, it will display in status and searches will not be saved.
 #>
 function Search-Folder {
     param (
@@ -176,6 +176,7 @@ function Search-Folder {
         ListEnd         = 0
         ShowFullName    = $false
         ShowParent      = $false
+        ShowScore       = $false
         SearchBarString = "Search: "
         Position        = [PSCustomObject]@{
             MaxY    = 0
@@ -651,9 +652,14 @@ function Search-Folder {
                     New-SearchIndex -Path $Path
                     $RebuildInProgress = $true
                 }
-                "ToggleIncognito" {
-                    Write-Log "HandleCommand: CommandReady: ToggleIncognito" -Path $LogPath
+                "Incognito" {
+                    Write-Log "HandleCommand: CommandReady: Incognito" -Path $LogPath
                     $SearchHistory.Incognito = !$SearchHistory.Incognito
+                }
+                "ShowScore" {
+                    Write-Log "HandleCommand: CommandReady: ShowScore" -Path $LogPath
+                    $Display.ShowScore = !$Display.ShowScore
+                    $Display.RedrawList = $true
                 }
                 Default {
                     Write-Log "HandleCommand: CommandReady: UncaughtCommand" -Path $LogPath
@@ -896,6 +902,11 @@ function Search-Folder {
                     $NameFormat = "$($i -eq $Results.Cursor ? '' : "`e[0m")"
                     $NameString = "$NameFormat$($Results.Data[$i].Name)"
                     [Console]::Write($NameString)
+
+                    #Display score
+                    if ($Display.ShowScore) {
+                        [Console]::Write(" `e[38;2;0;0;255m($([Math]::Round($Results.Data[$i].FinalScore, 2)))`e[0m")
+                    }
 
                     #Determine if theres a name clash, if so, display parent folder name
                     $InResultsBefore = ($i -ne $Display.ListStart -and $Results.Data[($Display.ListStart)..($i - 1)].Name.IndexOf($Results.Data[$i].Name) -ne -1)
