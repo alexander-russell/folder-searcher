@@ -38,7 +38,7 @@ Select Mode:
 - ':': Enter Command Mode
 - 'Q': Quit the program
 - Enter: Open the selected item. Hold Shift to open the selected item's parent. Hold Ctrl to keep search dialogue open. Hold both to do both!
-- '/': Open the selected item in Code. Same modifiers as enter.
+- '/': Open the selected item in Code. Same modifiers as enter. Default configuration uses key code 'Oem2' to represent forward slash. If this doesn't work, find out your key code by running [Console]::ReadKey() and typing a forward slash, then paste the Key value into Config.json as ForwardSlashKeyCode.
 - C: Copy the path to the selected item. Hold Shift to copy the path to the selected item's parent.
 - Up/Down: Navigate through listed search results. If more results available, the list will scroll as you reach the bound.
 - F: (FullName) Toggle display of the relative path (to main Path) to each listed result.
@@ -80,7 +80,8 @@ function Search-Folder {
     #Read config file
     if (![System.IO.File]::Exists("$DataPath\Config.json")) {
         [PSCustomObject]@{
-            Path = "PATH_TO_YOUR_FOLDER"
+            Path                = "PATH_TO_YOUR_FOLDER"
+            ForwardSlashKeyCode = "Oem2"
         } | ConvertTo-Json | Out-File "$DataPath\Config.json"
     }
     $Config = Get-Content "$DataPath\Config.json" | ConvertFrom-Json
@@ -93,7 +94,6 @@ function Search-Folder {
         }
         $Path = $Config.Path
     }
-    
 
     #Initialise keypress and mode
     $KeyPress = $null
@@ -478,7 +478,7 @@ function Search-Folder {
                     continue
                 }
                 #Open selection (or selection's parent)
-                elseif ($KeyPress.Key -eq "Enter" -or $KeyPress.KeyChar -eq "/") {
+                elseif ($KeyPress.Key -in @("Enter", $Config.ForwardSlashKeyCode)) {
                     #Check results have loaded
                     if ($Results.Data -and $Results.Data[$Results.Cursor]) {
 
@@ -505,7 +505,7 @@ function Search-Folder {
 
                         #If shift key, open parent instead
                         $OpenParent = $KeyPress.Modifiers -band [ConsoleModifiers]::Shift
-                        $OpenInCode = $KeyPress.KeyChar -eq "/"
+                        $OpenInCode = $KeyPress.Key -eq $Config.ForwardSlashKeyCode
 
                         #Check path is valid
                         $FullName = $Results.Data[$Results.Cursor].FullName
@@ -528,13 +528,14 @@ function Search-Folder {
                                         #For windows only, explicitly invoke File Explorer with this file in focus
                                         #select doesn't have much documentation, also works as explorer.exe <parentpath> /select,<childpath>
                                         "explorer.exe /select,'$FullName'" | out-file "C:\Users\alexa\Desktop\desky.txt"
-                                        explorer.exe /select,"$FullName"
+                                        explorer.exe /select, "$FullName"
                                     } 
                                     #Otherwise just invoke parent path with default program
                                     else {
                                         Invoke-Item -LiteralPath $ParentPath
                                     }
-                                } else {
+                                }
+                                else {
                                     #Open item in code (no checks on installation)
                                     if ($OpenInCode) {
                                         code $FullName
