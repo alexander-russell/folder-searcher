@@ -8,9 +8,6 @@ An interactive dialogue that presents all the items contained in the index for a
 .PARAMETER QueryContent
 Optional parameter to initialise the program with a query. It can be edited during runtime
 
-.PARAMETER Path
-The folder to 
-
 .EXAMPLE
 Search-Folder
 Search-Folder "my query"
@@ -41,6 +38,7 @@ Select Mode:
 - ':': Enter Command Mode
 - 'Q': Quit the program
 - Enter: Open the selected item. Hold Shift to open the selected item's parent. Hold Ctrl to keep search dialogue open. Hold both to do both!
+- '/': Open the selected item in Code. Same modifiers as enter.
 - C: Copy the path to the selected item. Hold Shift to copy the path to the selected item's parent.
 - Up/Down: Navigate through listed search results. If more results available, the list will scroll as you reach the bound.
 - F: (FullName) Toggle display of the relative path (to main Path) to each listed result.
@@ -480,7 +478,7 @@ function Search-Folder {
                     continue
                 }
                 #Open selection (or selection's parent)
-                elseif ($KeyPress.Key -eq "Enter") {
+                elseif ($KeyPress.Key -eq "Enter" -or $KeyPress.KeyChar -eq "/") {
                     #Check results have loaded
                     if ($Results.Data -and $Results.Data[$Results.Cursor]) {
 
@@ -507,28 +505,44 @@ function Search-Folder {
 
                         #If shift key, open parent instead
                         $OpenParent = $KeyPress.Modifiers -band [ConsoleModifiers]::Shift
+                        $OpenInCode = $KeyPress.KeyChar -eq "/"
 
                         #Check path is valid
                         $FullName = $Results.Data[$Results.Cursor].FullName
                         if (Test-Path -LiteralPath $FullName) {
                             #Open the chosen file (use job so weird apps like vscode that print verbose output to the console they're invoked from don't create clutter)
-                            $InvokeJob = Start-Job -ArgumentList @($FullName, $OpenParent) -ScriptBlock {
+                            $InvokeJob = Start-Job -ArgumentList @($FullName, $OpenParent, $OpenInCode) -ScriptBlock {
                                 param (
                                     $FullName,
-                                    $OpenParent
+                                    $OpenParent,
+                                    $OpenInCode
                                 )
+                                $ParentPath = Split-Path $FullName -Parent
                                 if ($OpenParent) {
-                                    if ($IsWindows) {
+                                    #Open item in code (no checks on installation)
+                                    if ($OpenInCode) {
+                                        code $ParentPath
+                                    }
+                                    #BUG explorer /select is only opening to the Documents folder
+                                    elseif ($IsWindows -and $false) {
                                         #For windows only, explicitly invoke File Explorer with this file in focus
-                                        explorer.exe /select,$FullName
-                                    } else {
-                                        #Otherwise just invoke parent path with default program
-                                        $ParentPath = Split-Path $FullName -Parent
+                                        #select doesn't have much documentation, also works as explorer.exe <parentpath> /select,<childpath>
+                                        "explorer.exe /select,'$FullName'" | out-file "C:\Users\alexa\Desktop\desky.txt"
+                                        explorer.exe /select,"$FullName"
+                                    } 
+                                    #Otherwise just invoke parent path with default program
+                                    else {
                                         Invoke-Item -LiteralPath $ParentPath
                                     }
                                 } else {
+                                    #Open item in code (no checks on installation)
+                                    if ($OpenInCode) {
+                                        code $FullName
+                                    } 
                                     #Invoke item with default program
-                                    Invoke-Item -LiteralPath $FullName
+                                    else {
+                                        Invoke-Item -LiteralPath $FullName
+                                    }
                                 }
                             }
                     
