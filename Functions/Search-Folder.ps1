@@ -207,6 +207,7 @@ function Search-Folder {
 
     #Clear log
     $null | Out-File $LogPath
+    Write-Log "Start: Hi" -Path $LogPath
 
     #Hide cursor
     [Console]::CursorVisible = $false
@@ -524,12 +525,13 @@ function Search-Folder {
                                         code $ParentPath
                                     }
                                     #BUG explorer /select is only opening to the Documents folder
-                                    elseif ($IsWindows -and $false) {
+                                    elseif ($IsWindows) {
                                         #For windows only, explicitly invoke File Explorer with this file in focus
                                         #select doesn't have much documentation, also works as explorer.exe <parentpath> /select,<childpath>
-                                        "explorer.exe /select,'$FullName'" | out-file "C:\Users\alexa\Desktop\desky.txt"
-                                        explorer.exe /select, "$FullName"
-                                    } 
+                                        #found current solution here: https://stackoverflow.com/questions/320509/is-it-possible-to-open-a-windows-explorer-window-from-powershell
+                                        Invoke-Expression "explorer '/select,$FullName'"
+                                        # Invoke-Expression "explorer '/select,C:\Users\alexa\Desktop\FilingCabinet\Awards\Resume\Transcript.pdf'"
+                                    }
                                     #Otherwise just invoke parent path with default program
                                     else {
                                         Invoke-Item -LiteralPath $ParentPath
