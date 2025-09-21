@@ -6,7 +6,8 @@
 
 # Functions to export
 $FunctionsToExport = @(
-	'Search-Folder'
+	'Search-Folder',
+	'New-SearchIndex'
 )
 
 
