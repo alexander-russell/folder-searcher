@@ -57,7 +57,7 @@ function New-SearchIndex {
     }
 
     #Start new crawl, always asynchronously
-    Start-ThreadJob -Name "SearchIndexCrawl" -ArgumentList @($Path, $DataPath) -ScriptBlock {
+    return Start-ThreadJob -Name "SearchIndexCrawl" -ArgumentList @($Path, $DataPath) -ScriptBlock {
         param (
             $Path, 
             $DataPath
@@ -79,7 +79,11 @@ function New-SearchIndex {
         $Items = Get-ChildItem -Path $Path -Recurse
 
         #Iterate through items, calculate score and assign to variable ItemsScored
-        $ItemsScored = foreach ($Item in $Items) {
+        $i = 0
+        $ItemsScored = @()
+        foreach ($Item in $Items) {
+            Write-Output "Indexing $($i.tostring('000000'))/$($Items.count)"
+            $i += 1
             #Calculate depth score
             $Depth = [Math]::Max($Item.FullName.Split("\").Count - ($RootPathDepth + 2), 0)
             $DepthScoreRaw = 1 - [Math]::Pow($Depth, [Math]::e)
@@ -106,14 +110,18 @@ function New-SearchIndex {
             $SiblingScore = ($SiblingCount -lt $SiblingLower) ? ($SiblingCount - $SiblingLower) / ($SiblingLower - 1) : ($SiblingCount -gt $SiblingUpper) ? [Math]::Max( - [Math]::Pow((($SiblingCount - $SiblingUpper) / (4 * $SiblingUpper)), 2), -1) : 0
 
             #Calculate selected count score
-            $LookupCountIndex = $LookupCountData.FullName.IndexOf($Item.FullName)
-            $LookupCountScore = $LookupCountIndex -ne -1 ? [Math]::Min($LookupCountData[$LookupCountIndex].Count, 5) : 0
+            if ($LookupCountData) {
+                $LookupCountIndex = $LookupCountData.FullName.IndexOf($Item.FullName)
+                $LookupCountScore = $LookupCountIndex -ne -1 ? [Math]::Min($LookupCountData[$LookupCountIndex].Count, 5) : 0
+            } else {
+                $LookupCountScore = 0
+            }
 
             #Put together into relevance score
             $RelevanceScore = $DepthScore * 10 + $TypeScore + $RecencyScore + $WriteGapScore + $SiblingScore + $LookupCountScore
 
             #Assemble object and collect in $ItemsScored
-            [pscustomobject]@{
+            $ItemsScored += [pscustomobject]@{
                 FullName       = $Item.FullName
                 Name           = $Item.Name
                 Folder         = $Item.PSIsContainer
@@ -121,6 +129,8 @@ function New-SearchIndex {
                 #Include a placeholder to be calculated at search time
                 FinalScore     = -1
             }
+
+            Write-Output "  FullName=$($Item.FullName); RelevanceScore=$($RelevanceScore)"
         }
 
         #Sort
@@ -133,5 +143,5 @@ function New-SearchIndex {
         [datetime]::Now.ToString("yyyy-MM-dd") | Out-File IndexLastCrawlDate.txt
 
         Pop-Location
-    } | Out-Null
+    }
 }
